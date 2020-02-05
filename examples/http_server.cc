@@ -78,66 +78,22 @@ class MyHandler : public Http::Handler {
             const Http::Request& req,
             Http::ResponseWriter response) override {
 
-        if (req.resource() == "/ping") {
+        if (req.resource() == "/") {
             if (req.method() == Http::Method::Get) {
-
-                using namespace Http;
-
-                auto query = req.query();
-                if (query.has("chunked")) {
-                    std::cout << "Using chunked encoding" << std::endl;
-
-                    response.headers()
-                        .add<Header::Server>("pistache/0.1")
-                        .add<Header::ContentType>(MIME(Text, Plain));
-
-                    response.cookies()
-                        .add(Cookie("lang", "en-US"));
-
-                    auto stream = response.stream(Http::Code::Ok);
-                    stream << "PO";
-                    stream << "NG";
-                    stream << ends;
-                }
-                else {
-                    response.send(Http::Code::Ok, "PONG");
-                }
-
-            }
-        }
-        else if (req.resource() == "/echo") {
-            if (req.method() == Http::Method::Post) {
-                response.send(Http::Code::Ok, req.body(), MIME(Text, Plain));
-            } else {
-                response.send(Http::Code::Method_Not_Allowed);
-            }
-        }
-        else if (req.resource() == "/stream_binary") {
-            auto stream = response.stream(Http::Code::Ok);
-            char binary_data[] = "some \0\r\n data\n";
-            size_t chunk_size = 14;
-            for (size_t i = 0; i < 10; ++i) {
-                stream.write(binary_data, chunk_size);
-                stream.flush();
-            }
-            stream.ends();
-        }
-        else if (req.resource() == "/exception") {
-            throw std::runtime_error("Exception thrown in the handler");
-        }
-        else if (req.resource() == "/timeout") {
-            response.timeoutAfter(std::chrono::seconds(2));
-        }
-        else if (req.resource() == "/static") {
-            if (req.method() == Http::Method::Get) {
-                Http::serveFile(response, "README.md").then([](ssize_t bytes) {
+                Http::serveFile(response, "index.html").then([](ssize_t bytes) {
                     std::cout << "Sent " << bytes << " bytes" << std::endl;
                 }, Async::NoExcept);
             }
         } else {
-            response.send(Http::Code::Not_Found);
+            if (req.method() == Http::Method::Get) {
+                std::string path(std::move(req.resource()));
+                path.erase(path.begin());
+                std::cout << path << std::endl;
+                Http::serveFile(response, path).then([](ssize_t bytes) {
+                    std::cout << "Sent " << bytes << " bytes" << std::endl;
+                }, Async::NoExcept);
+            }
         }
-
     }
 
     void onTimeout(
@@ -169,10 +125,13 @@ int main(int argc, char *argv[]) {
     cout << "Using " << thr << " threads" << endl;
 
     auto server = std::make_shared<Http::Endpoint>(addr);
+    auto flags = Tcp::Options::ReuseAddr;
 
     auto opts = Http::Endpoint::options()
-        .threads(thr);
+        .threads(thr)
+        .flags(flags);
     server->init(opts);
     server->setHandler(Http::make_handler<MyHandler>());
+//    server->useSSL("./certs/server.crt", "./certs/server.key");
     server->serve();
 }

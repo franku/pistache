@@ -1,6 +1,6 @@
 /* rest_description.cc
    Mathieu Stefani, 27 février 2016
-   
+
    Example of how to use the Description mechanism
 */
 
@@ -9,6 +9,7 @@
 #include <pistache/endpoint.h>
 
 #include <pistache/serializer/rapidjson.h>
+#include <rapidjson/document.h>
 
 using namespace std;
 using namespace Pistache;
@@ -29,8 +30,10 @@ public:
     { }
 
     void init(size_t thr = 2) {
+        auto flags = Tcp::Options::ReuseAddr;
         auto opts = Http::Endpoint::options()
-            .threads(thr);
+            .threads(thr)
+            .flags(flags);
         httpEndpoint->init(opts);
         createDescription();
     }
@@ -120,6 +123,7 @@ private:
 
     void createAccount(const Rest::Request&, Http::ResponseWriter response) {
         response.send(Http::Code::Ok, "The bank is closed, come back later");
+
     }
 
     void creditAccount(const Rest::Request&, Http::ResponseWriter response) {

@@ -38,8 +38,10 @@ public:
     { }
 
     void init(size_t thr = 2) {
+        auto flags = Tcp::Options::ReuseAddr;
         auto opts = Http::Endpoint::options()
-            .threads(thr);
+            .threads(thr)
+            .flags(flags);
         httpEndpoint->init(opts);
         setupRoutes();
     }
@@ -135,8 +137,8 @@ private:
         int value_;
     };
 
-    typedef std::mutex Lock;
-    typedef std::lock_guard<Lock> Guard;
+    using Lock = std::mutex;
+    using Guard = std::lock_guard<Lock>;
     Lock metricsLock;
     std::vector<Metric> metrics;
 
